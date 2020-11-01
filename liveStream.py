@@ -3,6 +3,10 @@ from time import sleep
 from flask import Flask, render_template, Response
 from camera_pi import Camera
 
+
+def main():
+    app.run(host='0.0.0.0', threaded=True)
+
 app = Flask(__name__)
 
 @app.route('/')
@@ -21,5 +25,5 @@ def video_feed():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', threaded=True)
+    main()
 
