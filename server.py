@@ -4,6 +4,10 @@ import signal
 import os
 import subprocess
 import liveStream
+import picamera
+import time
+import glob
+from pathlib import Path
 
 
 
@@ -41,7 +45,6 @@ def main():
             print("[S]: Starting Live Stream ...")
             
             startLive = subprocess.Popen(["python3", "liveStream.py"], stdout=subprocess.PIPE)
-            #liveStream.main()
             
             message_to_send = "OK".encode("UTF-8")
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
@@ -55,8 +58,79 @@ def main():
             message_to_send = "OK".encode("UTF-8")
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
             conn.send(message_to_send)
+        elif "Take Pic" in msg:
+            print("[S]: Taking pic ...")
+            
+            startLive.terminate()
+            time.sleep(1)
+            
+            with picamera.PiCamera() as camera:
+                dateAndTime = time.asctime( time.localtime(time.time()) )
+                camera.resolution = (1280, 720)
+                camera.capture(dateAndTime + ".jpg")  # will be saved in the current directory.
+                camera.close()
+                
+            startLive = subprocess.Popen(["python3", "liveStream.py"], stdout=subprocess.PIPE)
+            
+            message_to_send = "OK".encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
+            
+        elif "Send Pics" in msg:
+            print("[S]: Sending pics ...")
+            allCurrentPics = glob.glob("*.jpg")
+            # print(len(allCurrentPics))
+            
+            # send number of pics to client
+            message_to_send = str(len(allCurrentPics)).encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
+            
+            # client: OK
+            length_of_message = int.from_bytes(conn.recv(2), byteorder='big')
+            msg = conn.recv(length_of_message).decode("UTF-8")
+            print("[S]: Message from client: " + msg)
+            
+            
+            # send all pics . . .
+            for pic in allCurrentPics:
+                print("[S]: Sending " + pic + " ...")
+                message_to_send = pic.encode("UTF-8")
+                conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+                conn.send(message_to_send)
+                
+                # OK from client
+                length_of_message = int.from_bytes(conn.recv(2), byteorder='big')
+                msg = conn.recv(length_of_message).decode("UTF-8")
+                print("[S]: Message from client: " + msg)
+                
+                # send the size of the image to the client
+                a = Path(pic).stat().st_size
+                message_to_send = str(a).encode("UTF-8")
+                conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+                conn.send(message_to_send)
+                
+                # OK from client
+                length_of_message = int.from_bytes(conn.recv(2), byteorder='big')
+                msg = conn.recv(length_of_message).decode("UTF-8")
+                print("[S]: Message from client: " + msg)
+                
+                picToSend = open(pic,'rb')
+                while (True):
+                    picPtr = picToSend.read(1024)
+                    if not picPtr:
+                        break
+                    conn.sendall(picPtr)
+                os.remove(pic)
+                
+            message_to_send = "OK".encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
+            conn.close()
+            
         else:
             print("[S]: Do nothing")
+            conn.close()
             
 
     # Close the server socket
