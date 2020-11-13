@@ -6,6 +6,7 @@ import subprocess
 import liveStream
 import picamera
 import time
+import datetime
 import glob
 from pathlib import Path
 
@@ -30,7 +31,15 @@ def main():
     localhost_ip = (socket.gethostbyname(host))
     print("[S]: Server IP address is {}".format(localhost_ip))
     
+    
     startLive = ''
+    isLive = False
+    
+    
+    userAndTokens = {}
+    startDetection = ''
+    isArmed = False
+    
 
     # get list of host names to check for
     while True:
@@ -44,7 +53,11 @@ def main():
         if "StartLive" in msg:
             print("[S]: Starting Live Stream ...")
             
+            if isArmed == True:
+                startDetection.terminate()
+            
             startLive = subprocess.Popen(["python3", "liveStream.py"], stdout=subprocess.PIPE)
+            isLive = True
             
             message_to_send = "OK".encode("UTF-8")
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
@@ -53,7 +66,21 @@ def main():
             print("[S]: Ending Live Stream ...")
             
             startLive.terminate()
+            isLive = False
             
+            if isArmed == True:
+                # gets args ready 
+                args = []
+                args.append("python3")
+                args.append("run.py")
+                args.append("example/model.h5")
+            
+                # append tokens
+                for key, value in userAndTokens.items():
+                    args.append(value)
+                
+                startDetection = subprocess.Popen(args, stdout=subprocess.PIPE)
+                isArmed = True
             
             message_to_send = "OK".encode("UTF-8")
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
@@ -65,7 +92,8 @@ def main():
             time.sleep(1)
             
             with picamera.PiCamera() as camera:
-                dateAndTime = time.asctime( time.localtime(time.time()) )
+                now = datetime.datetime.now()
+                dateAndTime = now.strftime("%Y-%m-%d %H:%M:%S")
                 camera.resolution = (1280, 720)
                 camera.capture(dateAndTime + ".jpg")  # will be saved in the current directory.
                 camera.close()
@@ -121,12 +149,87 @@ def main():
                     if not picPtr:
                         break
                     conn.sendall(picPtr)
+                print("[S]: Removing " + pic)
                 os.remove(pic)
+                
+                # OK from client
+                length_of_message = int.from_bytes(conn.recv(2), byteorder='big')
+                msg = conn.recv(length_of_message).decode("UTF-8")
+                print("[S]: Message from client: " + msg)
                 
             message_to_send = "OK".encode("UTF-8")
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
             conn.send(message_to_send)
             conn.close()
+            
+        elif "Log In" in msg:
+            # need to get username and token
+            print("[S]: Getting username and token ...")
+            
+            # send OK
+            message_to_send = "OK".encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
+            
+            # client: Username
+            length_of_message = int.from_bytes(conn.recv(2), byteorder='big')
+            msg = conn.recv(length_of_message).decode("UTF-8")
+            print("[S]: Message from client: " + msg)
+            user = msg
+            
+            # send OK
+            message_to_send = "OK".encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
+            
+            # client: token
+            length_of_message = int.from_bytes(conn.recv(2), byteorder='big')
+            msg = conn.recv(length_of_message).decode("UTF-8")
+            print("[S]: Message from client: " + msg)
+            token = msg
+            
+            # add this (user:token) pair to the dictionary
+            userAndTokens[user] = token
+            
+            print("[S]: Current Users + Tokens: ")
+            print(userAndTokens)
+            
+            # send OK
+            message_to_send = "OK".encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
+        elif "Arm Doorbell" in msg:
+            print("[S]: Arming Doorbell ...")
+            
+            # gets args ready 
+            args = []
+            args.append("python3")
+            args.append("run.py")
+            args.append("example/model.h5")
+            
+            # append tokens
+            for key, value in userAndTokens.items():
+                args.append(value)
+            
+            # arm the camera
+            startDetection = subprocess.Popen(args, stdout=subprocess.PIPE)
+            isArmed = True
+            
+            # send OK
+            message_to_send = "OK".encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
+            
+        elif "Disarm Doorbell" in msg:
+            print("[S]: Disarming Doorbell ...")
+            
+            startDetection.terminate()
+            isArmed = False
+            
+            # send OK
+            message_to_send = "OK".encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
             
         else:
             print("[S]: Do nothing")

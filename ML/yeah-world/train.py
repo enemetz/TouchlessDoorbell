@@ -51,7 +51,7 @@ two or more RECORDING_FILES (see record.py to create these).""")
         stdout.write(' %s' % filename)
         stdout.flush()
         with open(filename, 'rb') as f:
-            x = load(f)
+            x = load(f, encoding='latin1')
             features = [feature_extractor.features(f) for f in x]
             label = np.zeros((len(recording_files),))
             label[i] = 1.          # Make a label with a 1 in the column for the file for this frame
