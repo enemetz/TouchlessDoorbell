@@ -194,6 +194,23 @@ def main():
             print("[S]: Current Users + Tokens: ")
             print(userAndTokens)
             
+            if isArmed == True:
+                startDetection.terminate()
+                
+                # gets args ready 
+                args = []
+                args.append("python3")
+                args.append("run.py")
+                args.append("example/model.h5")
+            
+                # append tokens
+                for key, value in userAndTokens.items():
+                    args.append(value)
+            
+                # arm the camera
+                startDetection = subprocess.Popen(args, stdout=subprocess.PIPE)
+                isArmed = True
+            
             # send OK
             message_to_send = "OK".encode("UTF-8")
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
@@ -231,6 +248,44 @@ def main():
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
             conn.send(message_to_send)
             
+        elif "Stop Notifications" in msg:
+            # send OK
+            message_to_send = "OK".encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
+            
+            # client: Username
+            length_of_message = int.from_bytes(conn.recv(2), byteorder='big')
+            msg = conn.recv(length_of_message).decode("UTF-8")
+            print("[S]: Message from client: " + msg)
+            user = msg
+            
+            print("[S]: Getting rid of token for " + user + " ...")
+            
+            if user in userAndTokens:
+                userAndTokens.pop(user)
+            
+            if isArmed == True:
+                startDetection.terminate()
+                
+                # gets args ready 
+                args = []
+                args.append("python3")
+                args.append("run.py")
+                args.append("example/model.h5")
+            
+                # append tokens
+                for key, value in userAndTokens.items():
+                    args.append(value)
+            
+                # arm the camera
+                startDetection = subprocess.Popen(args, stdout=subprocess.PIPE)
+                isArmed = True
+                
+            # send OK
+            message_to_send = "OK".encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
         else:
             print("[S]: Do nothing")
             conn.close()

@@ -56,6 +56,7 @@ Use MODEL to classify camera frames and play sounds when class 0 is recognised."
     
     
     
+    
     # We use the same MobileNet as during recording to turn images into features
     print('Loading feature extractor')
     extractor = PiNet()
@@ -104,7 +105,9 @@ Use MODEL to classify camera frames and play sounds when class 0 is recognised."
         
         # send notification
         if len(tokens) > 0:
+            stderr.write("Sending Notification\n")
             fcm.send("Doorbell activated!", "Someone is at the door", tokens)
+            stderr.write(tokens[0])
 
         # stop the camera
         camera.stream = ''
