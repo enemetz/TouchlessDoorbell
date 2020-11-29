@@ -40,14 +40,13 @@ if SHOW_UI:
 
 def main():
     if len(argv) < 2 or argv[1] == '--help':
-        print("""Usage: run.py MODEL token
+        print("""Usage: run.py MODEL takeDetectPic token(s) ...
 Use MODEL to classify camera frames and play sounds when class 0 is recognised.""")
         exit(1)
 
     model_file = argv[1]
     
-    
-    i = 2
+    i = 3
     tokens = []
     while i < len(argv):
         stderr.write(argv[i] + "\n")
@@ -97,17 +96,24 @@ Use MODEL to classify camera frames and play sounds when class 0 is recognised."
                 break
 
         
-        # take pic
         now = datetime.datetime.now()
         dateAndTime = now.strftime("%Y-%m-%d %H:%M:%S")
-        camera.camera.resolution = (1280,720)
-        camera.camera.capture(dateAndTime + ".jpg")
+        
+        
+        if argv[2] == "YES":
+            # take pic
+            camera.camera.resolution = (1280,720)
+            camera.camera.capture(dateAndTime + ".jpg")
+        
+        file = open(dateAndTime + ".txt" , "w")
+        file.close()
         
         # send notification
         if len(tokens) > 0:
             stderr.write("Sending Notification\n")
             fcm.send("Doorbell activated!", "Someone is at the door", tokens)
-            stderr.write(tokens[0])
+            for token in tokens:
+                stderr.write(token + "\n")
 
         # stop the camera
         camera.stream = ''
@@ -116,11 +122,9 @@ Use MODEL to classify camera frames and play sounds when class 0 is recognised."
         camera = ''
         
         # start up the camera again (give the camera a small break)
-        time.sleep(8)
+        time.sleep(30)
         camera = Camera(training_mode=False)
-        #raw_frame = camera.next_frame()
-        #raw_frame = camera.next_frame()
-        #raw_frame = camera.next_frame()
+        raw_frame = camera.next_frame()
         
         
             
