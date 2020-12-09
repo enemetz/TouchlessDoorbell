@@ -37,6 +37,7 @@ def main():
     
     
     userAndTokens = {}
+
     startDetection = ''
     isArmed = False
 
@@ -57,9 +58,11 @@ def main():
             
             if isArmed == True:
                 startDetection.terminate()
+                startDetection = ''
             
-            startLive = subprocess.Popen(["python3", "liveStream.py"], stdout=subprocess.PIPE)
-            isLive = True
+            if isLive == False:
+                startLive = subprocess.Popen(["python3", "liveStream.py"], stdout=subprocess.PIPE)
+                isLive = True
             
             message_to_send = "OK".encode("UTF-8")
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
@@ -69,6 +72,7 @@ def main():
             
             if isLive == True:
                 startLive.terminate()
+                startLive = ''
                 isLive = False
             
             if isArmed == True:
@@ -92,7 +96,10 @@ def main():
         elif "Take Pic" in msg:
             print("[S]: Taking pic ...")
             
-            startLive.terminate()
+            if isLive == True:
+                startLive.terminate()
+                startLive = ''
+
             time.sleep(1)
             
             with picamera.PiCamera() as camera:
@@ -200,6 +207,7 @@ def main():
             
             if isArmed == True:
                 startDetection.terminate()
+                startDetection = ''
                 
                 # gets args ready 
                 args = []
@@ -249,6 +257,7 @@ def main():
             
             if isArmed == True:
                 startDetection.terminate()
+                startDetection = ''
                 isArmed = False
             
             # send OK
@@ -275,6 +284,7 @@ def main():
             
             if isArmed == True:
                 startDetection.terminate()
+                startDetection = ''
                 
                 # gets args ready 
                 args = []
@@ -295,7 +305,8 @@ def main():
             message_to_send = "OK".encode("UTF-8")
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
             conn.send(message_to_send)
-        
+            conn.close()
+
         elif "Send Notifs" in msg:
             print("[S]: Sending notifications ...")
             allCurrentPics = glob.glob("*.txt")
@@ -336,6 +347,7 @@ def main():
             # if the camera is armed, disarm it and then start it with pic capture on  
             if isArmed == True:
                 startDetection.terminate()
+                startDetection = ''
                 
                 # gets args ready 
                 args = []
@@ -365,6 +377,7 @@ def main():
             # if the camera is armed, disarm it and then start it with pic capture on  
             if isArmed == True:
                 startDetection.terminate()
+                startDetection = ''
                 
                 # gets args ready 
                 args = []
@@ -386,7 +399,45 @@ def main():
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
             conn.send(message_to_send)
             conn.close()
+        
+        elif "Delete Notifs" in msg:
+            print("[S]: Deleting notifications ...")
+            
+            # send OK
+            message_to_send = "OK".encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
 
+            # client: number of notifications to delete
+            length_of_message = int.from_bytes(conn.recv(2), byteorder='big')
+            msg = conn.recv(length_of_message).decode("UTF-8")
+            print("[S]: Message from client: " + msg)
+
+            # send OK
+            message_to_send = "OK".encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
+
+            numNotifsToDelete = int(msg)
+            count = 1;
+            while count <= numNotifsToDelete:
+                # client: file to delete
+                length_of_message = int.from_bytes(conn.recv(2), byteorder='big')
+                msg = conn.recv(length_of_message).decode("UTF-8")
+                print("[S]: File to delete: " + msg)
+                
+                if os.path.exists(msg):
+                    os.remove(msg)
+                    print("[S]: " + msg + " deleted")
+                
+                # send OK
+                message_to_send = "OK".encode("UTF-8")
+                conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+                conn.send(message_to_send)
+
+                count = count + 1
+
+            conn.close()
         else:
             print("[S]: Sending test...")
             message_to_send = "TEST".encode("UTF-8")
