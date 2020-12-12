@@ -10,7 +10,7 @@ import datetime
 import glob
 from pathlib import Path
 
-
+# This is the main server that will be used to get all the functions of the PiBell working.
 
 def main():
 
@@ -228,6 +228,8 @@ def main():
             message_to_send = "OK".encode("UTF-8")
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
             conn.send(message_to_send)
+            conn.close()
+
         elif "Arm Doorbell" in msg:
             print("[S]: Arming Doorbell ...")
             
@@ -251,7 +253,8 @@ def main():
             message_to_send = "OK".encode("UTF-8")
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
             conn.send(message_to_send)
-            
+            conn.close()
+
         elif "Disarm Doorbell" in msg:
             print("[S]: Disarming Doorbell ...")
             
@@ -264,6 +267,7 @@ def main():
             message_to_send = "OK".encode("UTF-8")
             conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
             conn.send(message_to_send)
+            conn.close()
             
         elif "Stop Notifications" in msg:
             # send OK
@@ -438,6 +442,56 @@ def main():
                 count = count + 1
 
             conn.close()
+        
+        elif "isLiveRunning" in msg:
+            print("[S]: Checking if live stream is running ...")
+
+            if isLive == True:
+                startLive.terminate()
+                startLive = ''
+                isLive = False
+                
+                message_to_send = "DONE".encode("UTF-8")
+                conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+                conn.send(message_to_send)
+
+            else:
+                message_to_send = "FAIL".encode("UTF-8")
+                conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+                conn.send(message_to_send)
+            
+            conn.close()
+
+        elif "Send Number of Pics" in msg:
+            print("[S]: Sending number of pics ...")
+            allCurrentPics = glob.glob("*.jpg")
+            print(len(allCurrentPics))
+
+            if isArmed == True:
+                startDetection.terminate()
+                startDetection = ''
+                isArmed = False
+
+            
+            # send number of pics to client
+            message_to_send = str(len(allCurrentPics)).encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
+            
+            conn.close()
+
+        elif "Send Number of Messages" in msg:
+            print("[S]: Sending number of message logs ...")
+            allCurrentLogs = glob.glob("*.txt")
+            print(len(allCurrentLogs))
+
+            # send number of pics to client
+            message_to_send = str(len(allCurrentPics)).encode("UTF-8")
+            conn.send(len(message_to_send).to_bytes(2, byteorder='big'))
+            conn.send(message_to_send)
+            
+            conn.close()
+
         else:
             print("[S]: Sending test...")
             message_to_send = "TEST".encode("UTF-8")
